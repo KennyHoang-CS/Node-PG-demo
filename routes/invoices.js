@@ -12,7 +12,6 @@ router.get('/', async (req, res, next) =>{
     try{
         // Query our invoices list. 
         const invoiceResults = await db.query(`SELECT id, comp_code FROM invoices`);
-        console.log(invoiceResults)
         // Check if invoices results are empty.
         if (invoiceResults.rows.length === 0){
             throw new ExpressError(`invoices does not exist.`, 404);
@@ -92,20 +91,37 @@ router.put('/:id', async (req, res, next) => {
     
     try{
         // Get the data. 
-        const { id } = req.params;
-        const { amt } = req.body;
+        let { id } = req.params;
+        let { amt, paid } = req.body;
+        let paidDate = null; 
 
-        // Update the company in database. 
-        const invoiceResults = await db.query(
-            `UPDATE invoices SET amt=$1 WHERE id = $2
-            RETURNING *`, [amt, id]
+        const currResult = await db.query(`
+            SELECT paid FROM invoices WHERE id =$1`, [id]
         );
 
         // Check if invoice exists.  
-        if (invoiceResults.rows.length === 0){
+        if (currResult.rows.length === 0){
             throw new ExpressError(`Invoice ${id} does not exist.`, 404);
         }
         
+        let currPaidDate = currResult.rows[0].paid_date;
+
+        // Adjust the paid date accordingly. 
+        if(!currPaidDate && paid){
+            paidDate = new Date();
+        } else if (!paid){
+            paidDate = null;
+        } else{
+            paidDate = currPaidDate;
+        }
+
+        // Update the company in database. 
+        const invoiceResults = await db.query(
+            `UPDATE invoices SET amt=$1, paid=$2, paid_date=$3 
+            WHERE id = $4
+            RETURNING *`, [amt, paid, paidDate, id]
+        );
+
         return res.json({ invoice: invoiceResults.rows[0] });
     
     } catch (err){

@@ -3,7 +3,7 @@ const express = require('express');
 const ExpressError = require('../expressError');
 let router = new express.Router();
 const db = require('../db');
-
+const slugify = require('slugify');
 
 
 /**
@@ -32,7 +32,8 @@ router.get('/', async (req, res, next) => {
 router.post('/', async (req, res, next) =>{
     try{
         // Get the new data from request body.
-        const { code, name, description } = req.body;
+        const { name, description } = req.body;
+        const code = slugify(name, {lower: true});
 
         // Insert into company database. 
         const results = 
@@ -70,7 +71,6 @@ router.get('/:code', async (req, res, next) => {
         
         // Format the data to return as JSON. 
         const data = companyResults.rows[0];
-        console.log(data)
         const company = {
             code: data.code,
             name: data.name,
